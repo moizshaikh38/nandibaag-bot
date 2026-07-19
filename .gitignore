@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Local Environment Config (Contains sensitive keys)
+.env
+backend/.env
+frontend/.env
+
+# WhatsApp session data (persisted auth state)
+backend/sessions/
+frontend/sessions/
+sessions/
+
+# Logs
+backend/logs/
+*.log
+logs/
+
+# Build outputs
+dist/
+build/
+frontend/dist/
+
+# OS specific files
+.DS_Store
+Thumbs.db
