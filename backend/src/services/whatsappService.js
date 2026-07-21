@@ -129,11 +129,7 @@ function initSession(sessionId, { cleanStart = false } = {}) {
 
   logger.info(`Initializing WhatsApp session: ${sessionId}`);
 
-  const client = new Client({
-    authStrategy: new LocalAuth({
-      dataPath: getSessionDataPath(sessionId)
-    }),
-    puppeteer: {
+  const puppeteerOptions = {
       headless: true,
       args: [
         '--no-sandbox',
@@ -143,7 +139,19 @@ function initSession(sessionId, { cleanStart = false } = {}) {
         '--disable-gpu',
         '--single-process'
       ]
-    }
+    };
+
+  // Use system-installed Chromium in Docker/production environments
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    puppeteerOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    logger.info(`Using custom Chrome path: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+  }
+
+  const client = new Client({
+    authStrategy: new LocalAuth({
+      dataPath: getSessionDataPath(sessionId)
+    }),
+    puppeteer: puppeteerOptions
   });
 
   // ─── EVENT LISTENERS (registered BEFORE initialize) ───
