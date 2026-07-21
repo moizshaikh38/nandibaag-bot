@@ -9,7 +9,8 @@
     "setup": "node src/scripts/setupEnv.js",
     "check-ports": "node src/scripts/checkPorts.js",
     "smoke-test": "node src/scripts/smokeTest.js",
-    "test-ai": "node src/scripts/testAIReply.js"
+    "test-ai": "node src/scripts/testAIReply.js",
+    "postinstall": "npx puppeteer browsers install chrome"
   },
   "keywords": [
     "whatsapp",
