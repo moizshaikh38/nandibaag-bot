@@ -144,7 +144,19 @@ function initSession(sessionId, { cleanStart = false } = {}) {
         '--disable-translate',
         '--no-first-run',
         '--no-zygote',
-        '--js-flags=--max-old-space-size=256'
+        '--single-process',
+        '--disable-software-rasterizer',
+        '--disable-features=AudioServiceOutOfProcess',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-site-isolation-trials',
+        '--disable-web-security',
+        '--disable-features=TranslateUI',
+        '--js-flags=--max-old-space-size=128',
+        '--renderer-process-limit=1',
+        '--disable-canvas-aa',
+        '--disable-2d-canvas-clip-aa',
+        '--disable-gl-drawing-for-tests',
+        '--disable-composited-antialiasing'
       ]
     };
 
