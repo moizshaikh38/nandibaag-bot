@@ -137,7 +137,14 @@ function initSession(sessionId, { cleanStart = false } = {}) {
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
-        '--single-process'
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--disable-sync',
+        '--disable-translate',
+        '--no-first-run',
+        '--no-zygote',
+        '--js-flags=--max-old-space-size=256'
       ]
     };
 
