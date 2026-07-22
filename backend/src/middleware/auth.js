@@ -50,18 +50,20 @@ function verifyToken(req, res, next) {
  * Checks if user has admin role
  * Returns 403 if not admin
  */
-function requireAdmin(req, res, next) {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-  
-  next();
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user || (!roles.includes(req.user.role) && req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions'
+      });
+    }
+    next();
+  };
 }
 
 module.exports = {
   verifyToken,
-  requireAdmin
+  requireAdmin,
+  requireRole
 };

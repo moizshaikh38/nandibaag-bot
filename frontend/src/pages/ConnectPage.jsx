@@ -158,7 +158,7 @@ export default function ConnectPage() {
       }
     };
 
-    const handleSessionDestroyed = () => {
+    const handleSessionDestroyed = (data) => {
       fetchSessions();
     };
 
@@ -169,6 +169,7 @@ export default function ConnectPage() {
     socket.on('whatsapp:init_failed', handleInitFailed);
     socket.on('whatsapp:reconnect_failed', handleReconnectFailed);
     socket.on('whatsapp:session_destroyed', handleSessionDestroyed);
+    socket.on('number_deleted', handleSessionDestroyed);
 
     return () => {
       socket.off('whatsapp:qr', handleQR);
@@ -178,6 +179,7 @@ export default function ConnectPage() {
       socket.off('whatsapp:init_failed', handleInitFailed);
       socket.off('whatsapp:reconnect_failed', handleReconnectFailed);
       socket.off('whatsapp:session_destroyed', handleSessionDestroyed);
+      socket.off('number_deleted', handleSessionDestroyed);
     };
   }, [socket, currentSessionId, fetchSessions]);
 
@@ -236,15 +238,20 @@ export default function ConnectPage() {
     }
   };
 
-  // ─── Disconnect ───
+  // ─── Disconnect / Delete ───
+  const [deletingSessionId, setDeletingSessionId] = useState(null);
+
   const handleDisconnect = async (sessionId) => {
+    setDeletingSessionId(sessionId);
     try {
       await api.delete(`/whatsapp/sessions/${sessionId}`);
-      toast.success('Session disconnected');
-      fetchSessions();
+      toast.success('Number deleted — you can add it again with the same label');
       setShowDisconnectConfirm(null);
+      fetchSessions();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to disconnect session');
+      toast.error(error.response?.data?.message || 'Failed to delete session');
+    } finally {
+      setDeletingSessionId(null);
     }
   };
 
@@ -592,24 +599,32 @@ export default function ConnectPage() {
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                 <Trash2 size={20} className="text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold">Delete Session?</h3>
+              <h3 className="text-lg font-semibold">Delete "{showDisconnectConfirm}"?</h3>
             </div>
-            <p className="text-gray-600 mb-6">
-              This will disconnect and permanently remove session <strong>"{showDisconnectConfirm}"</strong>. You'll need to scan QR again to reconnect.
+            <p className="text-gray-600 text-sm mb-6">
+              Delete "{showDisconnectConfirm}"? This will disconnect this WhatsApp number and permanently remove its session — you can add a new number with the same label afterward, but chat history for this number will remain in the Chats list.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDisconnectConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                disabled={!!deletingSessionId}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDisconnect(showDisconnectConfirm)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-1.5"
+                disabled={!!deletingSessionId}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
-                <Trash2 size={16} />
-                Delete
+                {deletingSessionId === showDisconnectConfirm ? (
+                  <Loader size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Delete
+                  </>
+                )}
               </button>
             </div>
           </div>

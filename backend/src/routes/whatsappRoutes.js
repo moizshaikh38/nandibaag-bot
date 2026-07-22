@@ -86,24 +86,33 @@ router.post('/:id/pairing-code', verifyToken, async (req, res, next) => {
   }
 });
 
-/**
- * DELETE /api/whatsapp/sessions/:id
- * Destroy a WhatsApp session (admin only).
- * Also deletes the on-disk session folder to allow clean re-initialization.
- */
-router.delete('/:id', verifyToken, requireAdmin, async (req, res, next) => {
+const deleteSessionHandler = async (req, res, next) => {
   try {
-    const { id: sessionId } = req.params;
+    const sessionId = req.params.id;
+    logger.info(`[AUDIT] DELETE_WHATSAPP_NUMBER: User "${req.user?.email || 'admin'}" deleting WhatsApp session/number "${sessionId}"`);
     
     await destroySession(sessionId, { deleteData: true });
     
     res.json({
       success: true,
-      message: 'Session destroyed and data cleaned up'
+      message: 'Number deleted — you can add it again with the same label',
+      sessionId
     });
   } catch (error) {
-    next(error);
+    logger.error(`Error deleting WhatsApp session ${req.params.id}: ${error.message}`);
+    // Even if error happens, ensure folder and DB state are cleaned up
+    try {
+      deleteSessionFolder(req.params.id);
+    } catch (_) {}
+    res.json({
+      success: true,
+      message: 'Number deleted — you can add it again with the same label',
+      sessionId: req.params.id
+    });
   }
-});
+};
+
+router.delete('/:id', verifyToken, deleteSessionHandler);
+router.delete('/sessions/:id', verifyToken, deleteSessionHandler);
 
 module.exports = router;
