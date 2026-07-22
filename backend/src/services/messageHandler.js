@@ -172,6 +172,43 @@ async function handleIncomingMessage(sessionId, msg, io) {
       if (chat.isNewConversation) {
         chat.isNewConversation = false;
       }
+
+      // ── Stage Tracking & Handover Pinning ──
+      const lowerReply = aiReply.toLowerCase();
+      const lowerMsg = messageText.toLowerCase();
+
+      if (!chat.bookingDraft) chat.bookingDraft = {};
+
+      if (lowerMsg.includes('picnic') || lowerMsg.includes('one day')) {
+        chat.bookingDraft.bookingType = 'picnic';
+      } else if (lowerMsg.includes('couple')) {
+        chat.bookingDraft.bookingType = 'couple';
+      } else if (lowerMsg.includes('group') || lowerMsg.includes('family')) {
+        chat.bookingDraft.bookingType = 'group';
+      }
+
+      // Extract quoted price if present
+      const priceMatch = aiReply.match(/(?:total|amount|rate|price|rs\.?|₹)\s*:?\s*₹?\s*(\d{3,6})/i);
+      if (priceMatch && priceMatch[1]) {
+        chat.bookingDraft.calculatedPrice = parseInt(priceMatch[1], 10);
+      }
+
+      const isHandoverReply = lowerReply.includes('details note') || lowerReply.includes('team aapko') || lowerReply.includes('call karegi') || lowerReply.includes('payment aur confirmation');
+      const hasNameAndPhone = (customerName || chat.customerName) && (customerPhone || chat.customerPhone);
+
+      const resetKeywords = ['naya', 'new', 'reset', 'fresh start', 'phir se', 'dobara', 'start over'];
+      const isResetRequested = resetKeywords.some(k => lowerMsg.includes(k));
+
+      const previousStage = chat.bookingStage;
+
+      if (previousStage === 'handed_over' && !isResetRequested) {
+        // PIN stage at 'handed_over' — prevent moving backward to earlier stages
+        chat.bookingStage = 'handed_over';
+        logger.info(`[BOOKING STAGE] Stage pinned at 'handed_over' for ${customerPhone}`);
+      } else if (isHandoverReply || (hasNameAndPhone && (previousStage === 'name_given' || previousStage === 'phone_given' || previousStage === 'price_quoted'))) {
+        chat.bookingStage = 'handed_over';
+        logger.info(`[BOOKING STAGE] Stage updated and persisted to 'handed_over' for ${customerPhone}`);
+      }
       
       await chat.save();
       

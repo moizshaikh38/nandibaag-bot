@@ -414,6 +414,11 @@ function isReplyValid(text) {
     return false;
   }
   
+  // 1b. Anti-confirmation guard: bot must NEVER self-confirm bookings
+  if (/booking\s*(is\s*)?confirm(ed|ed\s*hai|hai)?/i.test(trimmed) || /aapki\s*booking\s*confirm/i.test(trimmed) || /booking\s*ho\s*gayi\s*hai/i.test(trimmed)) {
+    return false;
+  }
+  
   // 2. Unexpected script check (e.g. Chinese, Cyrillic, Arabic, etc.)
   // Allows: ASCII, Devanagari, Gujarati, General Punctuation (em/en dash, ellipsis, bullets),
   // Currency symbols (₹), Misc Symbols, Dingbats, and full emoji ranges
@@ -488,6 +493,10 @@ function getReplyRejectionReason(text) {
 
   const scriptMatch = trimmed.match(/[^\x00-\x7F\u0900-\u097F\u0A80-\u0AFF\u{2000}-\u{206F}\u{20A0}-\u{20CF}\u{2100}-\u{214F}\u{2190}-\u{21FF}\u2600-\u27BF\u{1F000}-\u{1FAFF}\u{FE00}-\u{FE0F}]/u);
   if (scriptMatch) return `UNEXPECTED_SCRIPT: char="${scriptMatch[0]}" U+${scriptMatch[0].codePointAt(0).toString(16).toUpperCase()}`;
+
+  if (/booking\s*(is\s*)?confirm(ed|ed\s*hai|hai)?/i.test(trimmed) || /aapki\s*booking\s*confirm/i.test(trimmed) || /booking\s*ho\s*gayi\s*hai/i.test(trimmed)) {
+    return 'FORBIDDEN_SELF_CONFIRMATION_PHRASE';
+  }
 
   if (/`{3}/.test(trimmed)) return 'MARKDOWN_CODE_BLOCK';
   const mdMatch = trimmed.match(/[<>#\*]/);
@@ -762,8 +771,33 @@ async function getAIResponse(chat, incomingMessage, resortSettings) {
     year: 'numeric'
   });
   
-  const systemPrompt = buildSystemPrompt(todayDateString, dayOfWeek, resortSettings);
-  console.log(`[TIMING] [3/6] System prompt and message history built in ${Date.now() - tPromptStart}ms`);
+  const baseSystemPrompt = buildSystemPrompt(todayDateString, dayOfWeek, resortSettings);
+
+  // Extract structured booking progress context
+  const bookingDraft = chat.bookingDraft || {};
+  const customerName = chat.customerName || bookingDraft.customerName || null;
+  const customerPhone = chat.customerPhone || bookingDraft.customerPhone || null;
+  const quotedPrice = bookingDraft.calculatedPrice ? `₹${bookingDraft.calculatedPrice}` : (bookingDraft.priceBreakdown || null);
+
+  const bookingProgressContext = `
+
+[CURRENT BOOKING PROGRESS (do not re-ask anything already filled in here)]
+- Booking type: ${bookingDraft.bookingType || 'NOT YET SELECTED'}
+- Date: ${bookingDraft.date || 'NOT YET GIVEN'}
+- Guests: ${bookingDraft.adults ? `${bookingDraft.adults} adults` : 'NOT YET GIVEN'}${bookingDraft.kids?.length ? `, ${bookingDraft.kids.length} kids` : ''}
+- Name: ${customerName || 'NOT YET COLLECTED'}
+- Phone: ${customerPhone || 'NOT YET COLLECTED'}
+- Price quoted: ${quotedPrice || 'NOT YET QUOTED'}
+- Stage: ${bookingStage}
+
+STRICT STAGE INSTRUCTIONS:
+- If Name and Phone above are already filled in, do NOT ask for them again under any circumstance.
+- If Stage is 'handed_over', do NOT re-quote the price or restart the booking flow — only answer the customer's new question (e.g. about alcohol, food, timing) and then briefly remind them staff will contact them for payment and confirmation, nothing more.
+- NEVER say "booking confirm hai" or "booking is confirmed". Only state that details are noted and team will call for payment/confirmation.
+`;
+
+  const systemPrompt = baseSystemPrompt + bookingProgressContext;
+  console.log(`[TIMING] [3/6] System prompt and message history built in ${Date.now() - tPromptStart}ms (Stage: ${bookingStage})`);
  
   let result = null;
  
@@ -819,9 +853,9 @@ async function getAIResponse(chat, incomingMessage, resortSettings) {
     // ── TIER 3: OpenRouter multi-model chain (3 free models across diverse infra) ──
     if (!result) {
       const models = [
-        { name: openrouterModelPrimary,                    label: 'PRIMARY' },     // Meta Llama 70B
-        { name: 'qwen/qwen3-next-80b-a3b-instruct:free',  label: 'QWEN_80B' },    // Qwen 80B
-        { name: 'google/gemma-4-31b-it:free',              label: 'GEMMA_31B' }    // Google Gemma 31B
+        { name: openrouterModelPrimary,             label: 'PRIMARY' },     // Meta Llama 70B
+        { name: 'qwen/qwen-2.5-72b-instruct:free', label: 'QWEN_72B' },    // Qwen 72B
+        { name: 'google/gemma-2-9b-it:free',        label: 'GEMMA_9B' }     // Google Gemma 9B
       ];
  
       for (let i = 0; i < models.length; i++) {
