@@ -57,6 +57,7 @@ async function handleIncomingMessage(sessionId, msg, io) {
     // Get settings for global mode and resort info
     console.log(`[TIMING] [2/6] Starting prompt building and AI chain execution after ${Date.now() - tStart}ms`);
     const settings = await Settings.findOne();
+    console.log(`[DEBUG] Settings found: ${!!settings}, globalMode: ${settings?.globalMode}`);
     if (!settings) {
       logger.error('Settings not found');
       return;
@@ -64,6 +65,7 @@ async function handleIncomingMessage(sessionId, msg, io) {
     
     // Find or create chat
     let chat = await Chat.findOne({ customerPhone });
+    console.log(`[DEBUG] Chat found: ${!!chat}, mode: ${chat?.mode}`);
     
     if (!chat) {
       chat = new Chat({
@@ -78,7 +80,7 @@ async function handleIncomingMessage(sessionId, msg, io) {
         isArchived: false
       });
       await chat.save();
-      logger.info(`Created new chat for ${customerPhone}`);
+      console.log(`[DEBUG] Created new chat for ${customerPhone}, mode: ${chat.mode}`);
     }
     
     // Check for opt-out phrases
@@ -109,6 +111,7 @@ async function handleIncomingMessage(sessionId, msg, io) {
     
     // Determine mode (only per-chat mode is used now)
     const mode = chat.mode;
+    console.log(`[DEBUG] Chat mode: ${mode}`);
     
     if (mode === 'human') {
       // Human mode - don't auto-reply, just save and notify staff
@@ -132,9 +135,11 @@ async function handleIncomingMessage(sessionId, msg, io) {
     }
     
     // AI mode - generate response
+    console.log(`[DEBUG] [3/6] Calling getAIResponse now...`);
     try {
       const aiReply = await getAIResponse(chat, messageText, settings);
       console.log(`[TIMING] [4/6] getAIResponse finished, AI reply generated in ${Date.now() - tStart}ms`);
+      console.log(`[DEBUG] AI reply (first 100 chars): ${aiReply?.substring(0, 100)}`);
       
       // Add AI reply to chat
       chat.messages.push({
