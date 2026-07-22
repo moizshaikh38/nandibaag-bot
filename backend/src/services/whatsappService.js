@@ -372,26 +372,37 @@ function getAllSessionsStatus(whatsappNumbers) {
  * Sends a WhatsApp message through a specific session
  */
 async function sendMessage(sessionId, toPhone, text) {
-  const sock = activeSockets.get(sessionId);
+  const activeKeys = Array.from(activeSockets.keys());
+  logger.info(`[sendMessage] Requesting send for session: "${sessionId}", activeSockets keys: [${activeKeys.join(', ')}]`);
 
-  if (!sock) {
-    throw new Error(`Session ${sessionId} not initialized`);
+  let sock = activeSockets.get(sessionId);
+  let resolvedSessionId = sessionId;
+
+  // Fallback: If requested sessionId is not found or not connected, use the first connected socket in activeSockets
+  if (!sock || connectionStates.get(sessionId) !== 'connected') {
+    for (const [id, s] of activeSockets.entries()) {
+      if (connectionStates.get(id) === 'connected') {
+        sock = s;
+        resolvedSessionId = id;
+        logger.info(`[sendMessage] Mismatch/offline fallback: using active connected session "${id}" instead of "${sessionId}"`);
+        break;
+      }
+    }
   }
 
-  const status = getSessionStatus(sessionId);
-  if (status !== 'connected') {
-    throw new Error(`Session ${sessionId} is not connected (status: ${status})`);
+  if (!sock) {
+    logger.error(`[sendMessage] FAILED: No active connected socket available. Requested "${sessionId}", active keys: [${activeKeys.join(', ')}]`);
+    throw new Error(`No connected WhatsApp session found. Available sessions: ${activeKeys.join(', ') || 'none'}`);
   }
 
   // Format to JID — accept both full JIDs and plain phone numbers
   let jid = toPhone;
   if (!toPhone.includes('@')) {
-    // Plain phone number — format to standard WhatsApp JID
     const digits = toPhone.replace(/\D/g, '');
     jid = `${digits}@s.whatsapp.net`;
   }
 
-  logger.info(`Sending message via session ${sessionId} to ${jid}`);
+  logger.info(`Sending message via session "${resolvedSessionId}" to JID "${jid}"`);
 
   let lastError = null;
 
@@ -399,18 +410,18 @@ async function sendMessage(sessionId, toPhone, text) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       await sock.sendMessage(jid, { text });
-      logger.info(`Message sent successfully via session ${sessionId}`);
+      logger.info(`Message sent successfully via session "${resolvedSessionId}" to "${jid}"`);
       return;
     } catch (error) {
       lastError = error;
-      logger.warn(`Send attempt ${attempt + 1} failed for session ${sessionId}: ${error.message}`);
+      logger.warn(`Send attempt ${attempt + 1} failed for session "${resolvedSessionId}" to "${jid}": ${error.message}`);
       if (attempt === 0) {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
   }
 
-  throw new Error(`Failed to send message via session ${sessionId} after 2 attempts: ${lastError.message}`);
+  throw new Error(`Failed to send message via session "${resolvedSessionId}" to "${jid}" after 2 attempts: ${lastError.message}`);
 }
 
 /**

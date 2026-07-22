@@ -163,27 +163,65 @@ router.post('/:id/message', verifyToken, async (req, res, next) => {
       });
     }
     
-    // Send message via WhatsApp
     const sessionId = chat.whatsappNumberUsed || 'default';
-    await sendMessage(sessionId, chat.customerPhone, text);
+    logger.info(`[STAFF MESSAGE] Route hit for chatId: ${chat._id}, phone: ${chat.customerPhone}, requested session: "${sessionId}"`);
     
-    // Append to chat messages
-    chat.messages.push({
+    let deliveryStatus = 'sent';
+    let sendError = null;
+
+    // Try sending message via WhatsApp
+    try {
+      await sendMessage(sessionId, chat.customerPhone, text);
+    } catch (err) {
+      deliveryStatus = 'failed';
+      sendError = err.message;
+      logger.error(`[STAFF MESSAGE FAILED] Could not send to ${chat.customerPhone}: ${err.message}`);
+    }
+    
+    // Append to chat messages with deliveryStatus
+    const newMessageObj = {
       sender: 'staff',
       text,
       timestamp: new Date(),
-      messageType: 'text'
-    });
-    
+      messageType: 'text',
+      deliveryStatus
+    };
+
+    chat.messages.push(newMessageObj);
     chat.lastMessageAt = new Date();
     await chat.save();
     
-    // Cancel pending follow-ups since customer is engaged
-    await cancelPendingFollowUps(chat._id, 'customer_replied');
+    // Cancel pending follow-ups since staff engaged
+    await cancelPendingFollowUps(chat._id, 'staff_handled');
+    
+    // Emit socket event for real-time dashboard sync
+    try {
+      const { getIO } = require('../sockets');
+      const io = getIO();
+      console.log(`[EMITTING new_message] Staff message for chat ${chat._id}, status: ${deliveryStatus}`);
+      io.emit('chat:new_message', {
+        chatId: chat._id,
+        customerPhone: chat.customerPhone,
+        message: text,
+        sender: 'staff',
+        timestamp: newMessageObj.timestamp,
+        deliveryStatus
+      });
+    } catch (socketErr) {
+      logger.warn(`Failed to emit socket event for staff message: ${socketErr.message}`);
+    }
+
+    if (deliveryStatus === 'failed') {
+      return res.status(500).json({
+        success: false,
+        message: `Message failed to send on WhatsApp: ${sendError}`
+      });
+    }
     
     res.json({
       success: true,
-      message: 'Message sent'
+      message: 'Message sent',
+      messageObj: newMessageObj
     });
   } catch (error) {
     next(error);

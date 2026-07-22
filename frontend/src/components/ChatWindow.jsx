@@ -145,9 +145,10 @@ export default function ChatWindow({ chat, onClose, onModeChange }) {
   const handleSendMessage = async () => {
     if (!messageText.trim() || isSending) return;
 
+    const textToSend = messageText;
     setIsSending(true);
     try {
-      await api.post(`/chats/${chat._id}/message`, { text: messageText });
+      const response = await api.post(`/chats/${chat._id}/message`, { text: textToSend });
       setMessageText('');
       toast.success('Message sent');
       
@@ -155,7 +156,8 @@ export default function ChatWindow({ chat, onClose, onModeChange }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send message');
+      const errMsg = error.response?.data?.message || 'Message failed to send — check WhatsApp connection';
+      toast.error(errMsg);
     } finally {
       setIsSending(false);
     }
@@ -361,8 +363,13 @@ export default function ChatWindow({ chat, onClose, onModeChange }) {
                       {message.timestamp && formatRelativeTime(message.timestamp)}
                     </span>
                     {isFromBot && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
                         {message.sender === 'staff' ? '👤' : '🤖'}
+                        {message.deliveryStatus === 'failed' && (
+                          <span className="text-red-600 font-bold text-xs flex items-center gap-0.5" title="Failed to deliver on WhatsApp">
+                            ⚠️ Failed
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>

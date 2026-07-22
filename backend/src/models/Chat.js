@@ -22,6 +22,11 @@ const messageSchema = new mongoose.Schema({
     type: String,
     enum: ['text', 'image', 'document'],
     default: 'text'
+  },
+  deliveryStatus: {
+    type: String,
+    enum: ['sending', 'sent', 'failed'],
+    default: 'sent'
   }
 }, { _id: false });
 

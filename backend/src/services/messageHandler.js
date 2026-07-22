@@ -128,6 +128,23 @@ async function handleIncomingMessage(sessionId, msg, io) {
     // Cancel pending follow-ups since customer is engaged
     await cancelPendingFollowUps(chat._id, 'customer_replied');
     
+    // ALWAYS emit socket event for customer incoming message for real-time dashboard sync
+    const { getIO } = require('../sockets');
+    try {
+      const ioInstance = getIO();
+      console.log(`[EMITTING new_message] Customer message from ${customerPhone} for chat ${chat._id}`);
+      ioInstance.emit('chat:new_message', {
+        chatId: chat._id,
+        customerPhone,
+        customerName: chat.customerName,
+        message: messageText,
+        sender: 'customer',
+        timestamp: new Date()
+      });
+    } catch (socketErr) {
+      logger.error(`Failed to emit socket event for incoming customer message: ${socketErr.message}`);
+    }
+
     // Determine mode (only per-chat mode is used now)
     const mode = chat.mode;
     console.log(`[DEBUG] Chat mode: ${mode}`);
@@ -136,20 +153,6 @@ async function handleIncomingMessage(sessionId, msg, io) {
       // Human mode - don't auto-reply, just save and notify staff
       await chat.save();
       logger.info(`Chat ${customerPhone} in human mode, message saved, no auto-reply`);
-      
-      // Emit event to dashboard for staff notification
-      const { getIO } = require('../sockets');
-      try {
-        const io = getIO();
-        io.emit('chat:new_message', {
-          chatId: chat._id,
-          customerPhone,
-          message: messageText
-        });
-      } catch (error) {
-        logger.error(`Failed to emit socket event: ${error.message}`);
-      }
-      
       return;
     }
     
@@ -211,6 +214,22 @@ async function handleIncomingMessage(sessionId, msg, io) {
       }
       
       await chat.save();
+      
+      // Emit socket event for bot reply for real-time dashboard sync
+      try {
+        const ioInstance = getIO();
+        console.log(`[EMITTING new_message] Bot reply for chat ${chat._id}`);
+        ioInstance.emit('chat:new_message', {
+          chatId: chat._id,
+          customerPhone,
+          customerName: chat.customerName,
+          message: aiReply,
+          sender: 'bot',
+          timestamp: new Date()
+        });
+      } catch (socketErr) {
+        logger.error(`Failed to emit socket event for bot reply: ${socketErr.message}`);
+      }
       
       // Send reply via WhatsApp — use original remoteJid to reply to exact sender
       const tSendStart = Date.now();

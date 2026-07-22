@@ -78,6 +78,14 @@ export default function ChatsPage() {
     fetchChats(debouncedSearch);
   }, [debouncedSearch, fetchChats]);
 
+  // Safety net polling (every 10s)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchChats(debouncedSearch);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchChats, debouncedSearch]);
+
   // Handle URL params for initial selection and filter tab
   useEffect(() => {
     const chatIdFromUrl = searchParams.get('chatId');
@@ -97,16 +105,25 @@ export default function ChatsPage() {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
+      console.log('[RECEIVED new_message]', data);
       setChats(prev => {
+        const chatExists = prev.some(c => c._id === data.chatId);
+        
+        if (!chatExists) {
+          fetchChats(debouncedSearch);
+          return prev;
+        }
+
         const updated = prev.map(chat => {
           if (chat._id === data.chatId) {
             return {
               ...chat,
-              lastMessageAt: new Date(),
+              lastMessageAt: data.timestamp || new Date(),
               messages: [...chat.messages, {
-                sender: 'customer',
+                sender: data.sender || 'customer',
                 text: data.message,
-                timestamp: new Date()
+                timestamp: data.timestamp || new Date(),
+                deliveryStatus: data.deliveryStatus || 'sent'
               }]
             };
           }
