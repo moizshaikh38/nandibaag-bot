@@ -158,9 +158,15 @@ async function handleIncomingMessage(sessionId, msg, io) {
       
       // Send reply via WhatsApp
       const tSendStart = Date.now();
-      console.log(`[TIMING] [5/6] Sending message back via WhatsApp at ${new Date().toISOString()}`);
-      await sendMessage(sessionId, customerPhone, aiReply);
-      console.log(`[TIMING] [6/6] Sent message back via WhatsApp in ${Date.now() - tSendStart}ms. Total end-to-end processing time: ${Date.now() - tStart}ms.`);
+      console.log(`[DEBUG] [5/6] Sending message via session "${sessionId}" to phone "${customerPhone}"`);
+      console.log(`[DEBUG] remoteJid was: ${msg.key.remoteJid}`);
+      try {
+        await sendMessage(sessionId, customerPhone, aiReply);
+        console.log(`[TIMING] [6/6] Sent message back via WhatsApp in ${Date.now() - tSendStart}ms. Total: ${Date.now() - tStart}ms.`);
+      } catch (sendErr) {
+        console.error(`[ERROR] sendMessage FAILED for session "${sessionId}" to "${customerPhone}": ${sendErr.message}`);
+        console.error(`[ERROR] Stack: ${sendErr.stack}`);
+      }
       
       // Stop "typing..." state (Baileys format)
       try {
