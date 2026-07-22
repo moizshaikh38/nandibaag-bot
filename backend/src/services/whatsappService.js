@@ -439,7 +439,7 @@ async function destroySession(sessionId, { deleteData = true } = {}) {
     const settings = await Settings.findOne();
     if (settings) {
       const originalLength = settings.whatsappNumbers.length;
-      settings.whatsappNumbers = settings.whatsappNumbers.filter(n => n.label !== sessionId);
+      settings.whatsappNumbers = settings.whatsappNumbers.filter(n => n.label !== sessionId && n.number !== sessionId);
       if (settings.whatsappNumbers.length !== originalLength) {
         await settings.save();
         logger.info(`Removed session ${sessionId} from Settings whatsappNumbers in database`);

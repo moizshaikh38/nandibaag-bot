@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { Plus, QrCode, Smartphone, RefreshCw, X, Copy, Check, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
+import { Plus, QrCode, Smartphone, RefreshCw, X, Copy, Check, CheckCircle, AlertTriangle, Loader, Trash2 } from 'lucide-react';
 
 const statusConfig = {
   connected: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Connected' },
@@ -416,12 +416,13 @@ export default function ConnectPage() {
                         {config.label}
                       </span>
                     </div>
-                    {isAdmin && status === 'connected' && (
+                    {isAdmin && (
                       <button
                         onClick={() => setShowDisconnectConfirm(sessionId)}
-                        className="text-red-600 hover:text-red-700 font-medium text-sm"
+                        className="flex items-center gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 transition-colors font-medium text-sm"
                       >
-                        Disconnect
+                        <Trash2 size={14} />
+                        Delete
                       </button>
                     )}
                   </div>
@@ -548,26 +549,32 @@ export default function ConnectPage() {
         </div>
       )}
 
-      {/* Disconnect Confirmation Modal */}
+      {/* Delete Session Confirmation Modal */}
       {showDisconnectConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-semibold mb-2">Disconnect Session?</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Delete Session?</h3>
+            </div>
             <p className="text-gray-600 mb-6">
-              This will disconnect the WhatsApp session for "{showDisconnectConfirm}". You'll need to reconnect it later.
+              This will disconnect and permanently remove session <strong>"{showDisconnectConfirm}"</strong>. You'll need to scan QR again to reconnect.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDisconnectConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDisconnect(showDisconnectConfirm)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-1.5"
               >
-                Disconnect
+                <Trash2 size={16} />
+                Delete
               </button>
             </div>
           </div>
