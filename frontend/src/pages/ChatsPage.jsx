@@ -325,7 +325,7 @@ export default function ChatsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="font-semibold text-gray-800 truncate">
-                            {chat.customerName || formatPhoneDisplay(chat.customerPhone)}
+                            {chat.customerName ? `${chat.customerName} (${formatPhoneDisplay(chat.customerPhone)})` : formatPhoneDisplay(chat.customerPhone)}
                           </h3>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {isHot && <Flame size={14} className="text-orange-500" />}

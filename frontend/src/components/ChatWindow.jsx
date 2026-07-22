@@ -212,7 +212,7 @@ export default function ChatWindow({ chat, onClose, onModeChange }) {
           
           <div>
             <h2 className="font-semibold">
-              {chat.customerName || formatPhoneDisplay(chat.customerPhone)}
+              {chat.customerName ? `${chat.customerName} (${formatPhoneDisplay(chat.customerPhone)})` : formatPhoneDisplay(chat.customerPhone)}
             </h2>
             <div className="flex items-center gap-2 text-xs text-whatsapp-light">
               {isAI ? (
