@@ -264,4 +264,31 @@ router.patch('/:id/archive', verifyToken, async (req, res, next) => {
   }
 });
 
+/**
+ * DELETE /api/chats/clear-all
+ * Clear all chats and associated lead/follow-up data
+ */
+router.delete('/clear-all', verifyToken, async (req, res, next) => {
+  try {
+    const { Lead, FollowUp, Booking } = require('../models');
+    
+    const [chatRes, leadRes, followRes, bookingRes] = await Promise.all([
+      Chat.deleteMany({}),
+      Lead.deleteMany({}),
+      FollowUp.deleteMany({}),
+      Booking.deleteMany({})
+    ]);
+    
+    logger.info(`Cleared all chats (${chatRes.deletedCount}), leads (${leadRes.deletedCount}), follow-ups (${followRes.deletedCount})`);
+    
+    res.json({
+      success: true,
+      message: `Cleared ${chatRes.deletedCount} chats and ${leadRes.deletedCount} leads`,
+      deletedCount: chatRes.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

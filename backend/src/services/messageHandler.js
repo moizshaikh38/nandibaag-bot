@@ -24,7 +24,22 @@ async function handleIncomingMessage(sessionId, msg, io) {
   const tStart = Date.now();
   try {
     // Extract message details (Baileys format)
-    const customerPhone = msg.key.remoteJid.replace("@s.whatsapp.net", "");
+    const remoteJid = msg.key.remoteJid || '';
+    const remoteJidAlt = msg.key.remoteJidAlt || '';
+    const participant = msg.key.participant || '';
+    
+    // Determine target JID for real phone extraction
+    let phoneJid = remoteJid;
+    if (phoneJid.includes('@lid')) {
+      if (remoteJidAlt && remoteJidAlt.includes('@s.whatsapp.net')) {
+        phoneJid = remoteJidAlt;
+      } else if (participant && participant.includes('@s.whatsapp.net')) {
+        phoneJid = participant;
+      }
+    }
+
+    const customerPhone = phoneJid.replace("@s.whatsapp.net", "").replace("@c.us", "").replace("@lid", "");
+    const customerName = msg.pushName || null;
     const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
     
     // Detect message type
@@ -41,7 +56,7 @@ async function handleIncomingMessage(sessionId, msg, io) {
     }
     
     console.log(`[TIMING] [1/6] Received message from WhatsApp at ${new Date().toISOString()}`);
-    logger.info(`Processing message from ${customerPhone}: ${messageText.substring(0, 50)}...`);
+    logger.info(`Processing message from ${customerPhone} (${customerName || 'No Name'}): ${messageText.substring(0, 50)}...`);
 
     // Trigger WhatsApp "typing..." state immediately (Baileys format)
     try {
@@ -70,6 +85,7 @@ async function handleIncomingMessage(sessionId, msg, io) {
     if (!chat) {
       chat = new Chat({
         customerPhone,
+        customerName,
         whatsappNumberUsed: sessionId,
         mode: settings.globalMode,
         language: 'unknown',
@@ -80,7 +96,10 @@ async function handleIncomingMessage(sessionId, msg, io) {
         isArchived: false
       });
       await chat.save();
-      console.log(`[DEBUG] Created new chat for ${customerPhone}, mode: ${chat.mode}`);
+      console.log(`[DEBUG] Created new chat for ${customerPhone} (${customerName || 'No Name'}), mode: ${chat.mode}`);
+    } else if (customerName && chat.customerName !== customerName) {
+      chat.customerName = customerName;
+      await chat.save();
     }
     
     // Check for opt-out phrases

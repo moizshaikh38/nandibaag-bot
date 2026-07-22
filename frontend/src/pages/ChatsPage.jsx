@@ -3,11 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import api from '../utils/api';
 import { formatPhoneDisplay, formatRelativeTime, getLanguageBadgeColor } from '../utils/formatters';
-import { Search, MessageSquare, Bot, User, Flame, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Search, MessageSquare, Bot, User, Flame, ChevronRight, Trash2 } from 'lucide-react';
 import ChatWindow from '../components/ChatWindow';
 import toast from 'react-hot-toast';
 
 export default function ChatsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const socket = useSocket();
@@ -46,6 +49,21 @@ export default function ChatsPage() {
       setIsLoading(false);
     }
   }, []);
+
+  // Clear all stored chats handler
+  const handleClearAllChats = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL stored chats and leads? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await api.delete('/chats/clear-all');
+      toast.success('All chats cleared successfully');
+      setChats([]);
+      setSelectedChatId(null);
+    } catch (err) {
+      toast.error('Failed to clear chats');
+    }
+  };
 
   // Debounced search
   useEffect(() => {
@@ -209,9 +227,21 @@ export default function ChatsPage() {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-800">Chats</h1>
-            <span className="text-xs font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600">
-              Total: {chats.length}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600">
+                Total: {chats.length}
+              </span>
+              {isAdmin && chats.length > 0 && (
+                <button
+                  onClick={handleClearAllChats}
+                  title="Clear all chats"
+                  className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                >
+                  <Trash2 size={13} />
+                  Clear All
+                </button>
+              )}
+            </div>
           </div>
           
           {/* Search Bar */}
