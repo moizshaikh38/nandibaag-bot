@@ -275,7 +275,18 @@ export default function ConnectPage() {
           <div className="flex flex-col items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-whatsapp mb-4"></div>
             <p className="text-gray-600 font-medium">Initializing session...</p>
-            <p className="text-gray-400 text-sm mt-1">Starting WhatsApp Web browser</p>
+            <p className="text-gray-400 text-sm mt-1 mb-6">Starting WhatsApp Web session</p>
+            {currentSessionId && (
+              <button
+                onClick={() => {
+                  handleDisconnect(currentSessionId);
+                  closeModal();
+                }}
+                className="text-xs text-red-600 hover:text-red-700 underline font-medium"
+              >
+                Cancel & Delete Session
+              </button>
+            )}
           </div>
         );
 
@@ -293,10 +304,22 @@ export default function ConnectPage() {
                 <p className="text-xs text-gray-400 mb-4">
                   Open WhatsApp → Linked Devices → Link a Device
                 </p>
-                <div className="flex items-center justify-center gap-2 text-xs text-yellow-600 bg-yellow-50 rounded-lg px-3 py-2">
+                <div className="flex items-center justify-center gap-2 text-xs text-yellow-600 bg-yellow-50 rounded-lg px-3 py-2 mb-4">
                   <Loader size={14} className="animate-spin" />
                   Waiting for scan...
                 </div>
+                {currentSessionId && (
+                  <button
+                    onClick={() => {
+                      handleDisconnect(currentSessionId);
+                      closeModal();
+                    }}
+                    className="text-xs text-red-600 hover:text-red-700 underline font-medium flex items-center gap-1 mx-auto"
+                  >
+                    <Trash2 size={13} />
+                    Cancel & Delete Session
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -335,20 +358,32 @@ export default function ConnectPage() {
             <p className="text-sm text-gray-500 text-center px-4 mb-6 max-w-xs">
               {errorMessage || 'Something went wrong. Try cleaning up and reconnecting.'}
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
               >
-                Cancel
+                Close
               </button>
               <button
                 onClick={handleRetry}
-                className="px-4 py-2 bg-whatsapp text-white rounded-lg hover:bg-whatsapp-light transition-colors text-sm font-medium flex items-center gap-2"
+                className="px-3 py-2 bg-whatsapp text-white rounded-lg hover:bg-whatsapp-light transition-colors text-sm font-medium flex items-center gap-1.5"
               >
-                <RefreshCw size={16} />
+                <RefreshCw size={14} />
                 Clean Retry
               </button>
+              {currentSessionId && (
+                <button
+                  onClick={() => {
+                    handleDisconnect(currentSessionId);
+                    closeModal();
+                  }}
+                  className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  Delete Session
+                </button>
+              )}
             </div>
           </div>
         );
