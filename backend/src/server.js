@@ -153,6 +153,24 @@ const startServer = async () => {
       logger.info(`Server running on port ${port}`);
       logger.info(`Environment: ${process.env.NODE_ENV}`);
       logger.info(`Frontend URL: ${frontendUrl}`);
+      
+      // Self-ping to keep Render free tier alive (prevent 15-min sleep)
+      if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+        const selfPingUrl = `${process.env.RENDER_EXTERNAL_URL}/health`;
+        setInterval(async () => {
+          try {
+            const https = require('https');
+            https.get(selfPingUrl, (res) => {
+              logger.debug(`Self-ping: ${res.statusCode}`);
+            }).on('error', (err) => {
+              logger.debug(`Self-ping failed: ${err.message}`);
+            });
+          } catch (err) {
+            logger.debug(`Self-ping error: ${err.message}`);
+          }
+        }, 10 * 60 * 1000); // Every 10 minutes
+        logger.info(`Self-ping enabled: ${selfPingUrl} every 10 minutes`);
+      }
     }).on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         logger.error(`Port ${port} is already in use.`);

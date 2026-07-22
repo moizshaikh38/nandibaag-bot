@@ -383,9 +383,13 @@ async function sendMessage(sessionId, toPhone, text) {
     throw new Error(`Session ${sessionId} is not connected (status: ${status})`);
   }
 
-  // Format phone number to JID format
-  const digits = toPhone.replace(/\D/g, '');
-  const jid = `${digits}@s.whatsapp.net`;
+  // Format to JID — accept both full JIDs and plain phone numbers
+  let jid = toPhone;
+  if (!toPhone.includes('@')) {
+    // Plain phone number — format to standard WhatsApp JID
+    const digits = toPhone.replace(/\D/g, '');
+    jid = `${digits}@s.whatsapp.net`;
+  }
 
   logger.info(`Sending message via session ${sessionId} to ${jid}`);
 
