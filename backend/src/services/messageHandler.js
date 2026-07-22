@@ -2,7 +2,7 @@ const { Chat, Settings } = require('../models');
 const { getAIResponse, detectLanguage } = require('./aiService');
 const { scoreMessage } = require('./leadScoring');
 const { scheduleFollowUps, cancelPendingFollowUps, containsOptOutPhrases, markChatAsOptedOut } = require('./followUpService');
-const { sendMessage } = require('./whatsappService');
+const { sendMessage, activeSockets } = require('./whatsappService');
 const logger = require('../config/logger');
 
 /**
@@ -17,16 +17,23 @@ const logger = require('../config/logger');
  * 6. Update chat language detection
  * 
  * @param {string} sessionId - WhatsApp session ID
- * @param {object} message - whatsapp-web.js message object
+ * @param {object} msg - Baileys message object
+ * @param {object} io - Socket.io instance
  */
-async function handleMessage(sessionId, message) {
+async function handleIncomingMessage(sessionId, msg, io) {
   const tStart = Date.now();
   try {
-    // Extract message details
-    const contact = message.from;
-    const customerPhone = message.resolvedPhone || contact.replace('@c.us', '').replace('@s.whatsapp.net', '');
-    const messageText = message.body;
-    const messageType = message.hasMedia ? 'image' : 'text';
+    // Extract message details (Baileys format)
+    const customerPhone = msg.key.remoteJid.replace("@s.whatsapp.net", "");
+    const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+    
+    // Detect message type
+    let messageType = 'text';
+    if (msg.message?.imageMessage) messageType = 'image';
+    else if (msg.message?.videoMessage) messageType = 'video';
+    else if (msg.message?.audioMessage) messageType = 'audio';
+    else if (msg.message?.documentMessage) messageType = 'document';
+    else if (msg.message?.stickerMessage) messageType = 'sticker';
     
     if (!messageText) {
       logger.debug(`Ignoring non-text message from ${customerPhone}`);
@@ -36,11 +43,12 @@ async function handleMessage(sessionId, message) {
     console.log(`[TIMING] [1/6] Received message from WhatsApp at ${new Date().toISOString()}`);
     logger.info(`Processing message from ${customerPhone}: ${messageText.substring(0, 50)}...`);
 
-    // Trigger WhatsApp "typing..." state immediately
+    // Trigger WhatsApp "typing..." state immediately (Baileys format)
     try {
-      const waChat = await message.getChat();
-      if (waChat && typeof waChat.sendStateTyping === 'function') {
-        waChat.sendStateTyping(); // non-blocking, fire-and-forget
+      const sock = activeSockets.get(sessionId);
+      if (sock) {
+        const jid = msg.key.remoteJid;
+        await sock.sendPresenceUpdate("composing", jid);
       }
     } catch (chatErr) {
       logger.debug(`Failed to send typing state: ${chatErr.message}`);
@@ -149,6 +157,17 @@ async function handleMessage(sessionId, message) {
       await sendMessage(sessionId, customerPhone, aiReply);
       console.log(`[TIMING] [6/6] Sent message back via WhatsApp in ${Date.now() - tSendStart}ms. Total end-to-end processing time: ${Date.now() - tStart}ms.`);
       
+      // Stop "typing..." state (Baileys format)
+      try {
+        const sock = activeSockets.get(sessionId);
+        if (sock) {
+          const jid = msg.key.remoteJid;
+          await sock.sendPresenceUpdate("paused", jid);
+        }
+      } catch (chatErr) {
+        logger.debug(`Failed to send paused state: ${chatErr.message}`);
+      }
+      
       // Score the message for lead tracking
       await scoreMessage(chat, messageText, aiReply);
       
@@ -178,5 +197,5 @@ async function handleMessage(sessionId, message) {
 }
 
 module.exports = {
-  handleMessage
+  handleIncomingMessage
 };

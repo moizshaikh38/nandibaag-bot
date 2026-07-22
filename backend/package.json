@@ -9,8 +9,7 @@
     "setup": "node src/scripts/setupEnv.js",
     "check-ports": "node src/scripts/checkPorts.js",
     "smoke-test": "node src/scripts/smokeTest.js",
-    "test-ai": "node src/scripts/testAIReply.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "test-ai": "node src/scripts/testAIReply.js"
   },
   "keywords": [
     "whatsapp",
@@ -21,6 +20,8 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.6.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -34,9 +35,9 @@
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
     "openai": "^4.24.1",
+    "pino": "^8.16.2",
     "qrcode": "^1.5.3",
     "socket.io": "^4.6.1",
-    "whatsapp-web.js": "^1.23.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {

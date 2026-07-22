@@ -9,7 +9,7 @@ A full-stack WhatsApp bot for Nandibaag Resort management with AI-powered custom
 - **Express** - Web framework
 - **MongoDB** + **Mongoose** - Database
 - **Socket.io** - Real-time WebSocket communication
-- **whatsapp-web.js** - WhatsApp integration
+- **@whiskeysockets/baileys** - WhatsApp integration
 - **OpenAI SDK** - AI integration via OpenRouter
 - **Winston** - Logging
 - **PM2** - Process management (production)
