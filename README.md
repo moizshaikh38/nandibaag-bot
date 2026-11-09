@@ -67,7 +67,7 @@ nandibaag-bot/
 ### Prerequisites
 - Node.js (v18 or higher)
 - MongoDB (local or cloud instance)
-- OpenRouter API key
+- At least one AI provider API key (OpenRouter by default)
 
 ### Backend Setup
 
@@ -88,17 +88,17 @@ cp .env.example .env
 
 4. Configure environment variables in `.env`:
 - Set your MongoDB connection URI
-- Add your OpenRouter API key
+- Add at least one AI provider key (`OPENROUTER_API_KEY` is the primary; `GEMINI_API_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY`, Cloudflare and a local Ollama URL are also supported in `.env.example`)
 - Configure JWT secret and expiration
 - Set resort contact numbers
-- Update admin credentials
+- Set `ADMIN_DEFAULT_EMAIL` and `ADMIN_DEFAULT_PASSWORD` to your own values
 
 5. Start the development server:
 ```bash
 npm run dev
 ```
 
-The backend will start on port 3000 (default).
+The backend starts on port 7000 by default (`PORT` in `.env`).
 
 ### Frontend Setup
 
@@ -117,7 +117,7 @@ npm install
 npm run dev
 ```
 
-The frontend will start on port 5173.
+The Vite dev server uses port 7001 (it moves to the next free port if busy) and proxies API requests to `http://localhost:7000`. Copy `frontend/.env.example` to `frontend/.env` if you need to set `VITE_` variables.
 
 ### Production Deployment
 
@@ -137,6 +137,10 @@ npm install
 npm run build
 # Serve the dist/ folder with your preferred web server
 ```
+
+## Useful backend scripts
+
+From `backend/`: `npm run setup` (`setupEnv.js`), `npm run check-ports`, `npm run smoke-test`, `npm run test-ai`. `npm run dev` uses nodemon, `npm start` runs `src/server.js`.
 
 ## Environment Variables
 
